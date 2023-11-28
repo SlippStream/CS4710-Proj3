@@ -1,33 +1,36 @@
 module password
 
-sig Username {}
-sig Password {}
+sig Person {}
 
-sig User {
-    , username: one Username
-    , password: one Password
+abstract sig User {
+    , password: one String
+    , owner: one Person
 }
 
-sig Admin in User {}
+sig UserAccount extends User {}
 
-fact "unique usernames" {all user: User | no user2: User | user != user2 and user.username = user2.username }
+sig Admin in UserAccount {}
 
-pred CreateUser[admin: Admin] {
-    some un: Username - User.username | some user: User - admin | user.username = un
+sig Database {
+    , userInDatabase: set User
 }
 
-pred UpdateUserPassword[admin: Admin, user: User, pwd: Password] {
-    user.password = pwd
+pred login[user: User, db: Database, pass: String] {
+    user in db.userInDatabase
+    user.password = pass
 }
 
-pred RemoveUser[admin: Admin, usern: Username] {
-    all user: User | usern != user.username
+pred show{
+    some u: User | some p: String | some d: Database | login[u,d,p]
 }
 
-pred show {
-    some admin: Admin | CreateUser[admin]
-    some admin: Admin | some user: User - admin | some password: Password | UpdateUserPassword[admin, user, password]
-    some admin: Admin | some user: Username | RemoveUser[admin, user]
+fact "one database" {
+    all u: User | one d: Database | u in d.userInDatabase
+    all d: Database | all d2: Database - d | no d.userInDatabase & d2.userInDatabase
 }
 
-run {#Admin >= 1} for 9 User, 10 Username, 7 Password
+fact "administrated database" {
+    all d: Database | some a: Admin | a in d.userInDatabase
+}
+
+run show for 8 User, 2 Database, exactly 8 String, exactly 5 Person
